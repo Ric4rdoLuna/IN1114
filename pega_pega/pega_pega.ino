@@ -33,6 +33,7 @@ long inicial = 0; // Time 1
 long atual = 0;   //Time 2
 
 int count = 0;
+uint32_t card_antigo = 0;
 void mudar_cor(int cor){
 
   switch(cor){
@@ -105,6 +106,7 @@ void setup(void) {
 
 
 void loop(void) {
+  
   Serial.println(modo_jogo);
   uint8_t success;
   uint8_t uid[] = { 0, 0, 0, 0, 0, 0, 0 };  // Buffer to store the returned UID
@@ -122,44 +124,63 @@ void loop(void) {
     
       if (uidLength == 4){
       // We probably have a Mifare Classic card ... 
-      uint32_t cardid = uid[0];
-      cardid <<= 8;
-      cardid |= uid[1];
-      cardid <<= 8;
-      cardid |= uid[2];  
-      cardid <<= 8;
-      cardid |= uid[3]; 
-      if(cardid == 14649212){
-        modo_jogo = 1;
-        inicial = millis();
+        uint32_t cardid = uid[0];
+        cardid <<= 8;
+        cardid |= uid[1];
+        cardid <<= 8;
+        cardid |= uid[2];  
+        cardid <<= 8;
+        cardid |= uid[3];
+         
+        if(cardid == 14649212){
+          modo_jogo = 1;
+          inicial = millis();
+          count = 0;
+          card_antigo = 0;
+        }
+        if(cardid == 2790233019){
+          modo_jogo = 0;
+          count = 0;
+          card_antigo = 0;
+        }
+        if(card_antigo == 0){
+        card_antigo = cardid;
       }
-      if(cardid == 2790233019){
-        modo_jogo = 0;
+
+        if(card_antigo!= cardid){
+          cor++;
+          count++;
+          if(cor > 3){
+            cor = 0;
+          }
+          digitalWrite(2, HIGH);   // Vibracall on
+          delay(50);               // off
+          digitalWrite(2, LOW);    // Vibracall off
+          mudar_cor(cor);
+          tone(9, 33, 100);
+          delay(50);
+          noTone(9);
+        }
+       card_antigo = cardid;
       }
-      }
-      
-      cor++;
-      if(cor > 3){
-        cor = 0;
-      }
-      digitalWrite(2, HIGH);   // Vibracall on
-      delay(50);               // off
-      digitalWrite(2, LOW);    // Vibracall off
-      mudar_cor(cor);
-      }
+     }
+     if(count > 3){
+        digitalWrite(2, HIGH);   // Vibracall on
+        delay(200);               // off
+        digitalWrite(2, LOW);    // Vibracall off
+        mudar_cor(0);
+        tone(9, 33, 100);
+        delay(50);
+        noTone(9);
+     }
+    Serial.print(count);
     }
   else{
     atual = millis();
     success = nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLength);
 
-    //Change game type
+    
     if (success) {
-      digitalWrite(2, HIGH);   // Vibracall on
-      delay(50);               // off
-      digitalWrite(2, LOW);    // Vibracall off
-      
-      inicial = millis();
-      
       nfc.PrintHex(uid, uidLength);
       if (uidLength == 4){
       // We probably have a Mifare Classic card ... 
@@ -170,32 +191,74 @@ void loop(void) {
         cardid |= uid[2];  
         cardid <<= 8;
         cardid |= uid[3]; 
+        
+        //Change game type
         if(cardid == 14649212){
+          
           modo_jogo = 1;
           inicial = millis();
+          count = 0;
+          card_antigo = 0;
         }
         if(cardid == 2790233019){
           modo_jogo = 0;
+          count = 0;
+          card_antigo = 0;
         }
+       
+       if(card_antigo == 0){
+          card_antigo = 1;
        }
+       if(card_antigo != cardid){
+          count++;
+          digitalWrite(2, HIGH);   // Vibracall on
+          delay(50);               // off
+          digitalWrite(2, LOW);    // Vibracall off
+          tone(9, 33, 100);
+          delay(50);
+          noTone(9);
+          inicial = millis();
+       }
+       card_antigo = cardid;
       }
-      if((atual - inicial)< 10000){
-        mudar_cor(0);
-      }
-      if((atual - inicial)> 10000 && (atual - inicial)< 20000){
-        mudar_cor(0);
-      }
-      else if((atual - inicial)> 20000 && (atual - inicial)< 30000){
-        mudar_cor(1);
-      }
-      else if((atual - inicial)> 30000 && (atual - inicial)< 40000){
-        mudar_cor(2);
-      }
-      else if((atual - inicial)> 50000){
-        mudar_cor(3);
-        digitalWrite(2, HIGH);   // Vibracall on
-        delay(500);               // off
-        digitalWrite(2, LOW);   
-      }
+    
     }
+      if(count < 4){
+        if((atual - inicial)< 10000){
+          mudar_cor(0);
+        }
+        if((atual - inicial)> 10000 && (atual - inicial)< 20000){
+          mudar_cor(0);
+        }
+        else if((atual - inicial)> 20000 && (atual - inicial)< 30000){
+          mudar_cor(1);
+        }
+        else if((atual - inicial)> 30000 && (atual - inicial)< 40000){
+          mudar_cor(2);
+        }
+        else if((atual - inicial)> 50000){
+          mudar_cor(3);
+
+          digitalWrite(2, HIGH);   // Vibracall on
+          delay(200);               // off
+          digitalWrite(2, LOW);    // Vibracall off
+          tone(9, 1047, 100);
+          delay(100);
+          noTone(9);
+        }
+      }
+      else{
+        if(count > 3){
+          digitalWrite(2, HIGH);   // Vibracall on
+          delay(200);               // off
+          digitalWrite(2, LOW);    // Vibracall off
+          mudar_cor(1);
+          tone(9, 33, 100);
+          delay(50);
+          noTone(9);
+        
+        }
+    }
+    Serial.print(count);
+  }
 }
